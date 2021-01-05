@@ -3,49 +3,65 @@
 #       Class for handling Tello
 #       Drone connections and 
 #       controls
+from djitellopy import Tello
+import cv2
+import numpy
+import Controller
 
-import threading
-import socket
-import sys
-import time
-
-"""
-Tello Drone Class
-    Handles setting up the connection
-    to the drone and sending commands.
-
-    Class is handled as a singleton
-    so that only one connection can
-    be made at a time.
-
-    Tello drone address and port are
-    supposed to be fixed at
-    address = '192.168.10.1'
-    port = 8889
-
-    We can should be able to receive
-    drone data through
-    (data, server) = sock.recvfrom(1518)
-"""
 class TelloDrone:
-    _TelloDrone = None
-    def __init__(self, localaddr_tuple, droneaddr_tuple):
-        if TelloDrone._TelloDrone == None:
-            # (addr, port)
-            self.localaddr = localaddr_tuple
-            # (addr, port)
-            self.droneaddr = droneaddr_tuple
-            self.local_socket = socket.socket(socket.AF_INET,\
-                socket.SOCK_DGRAM)
-            self.local_socket.bind(self.localaddr)
-            try:
-                TelloDrone._TelloDrone = self
-
-            except Exception as e:
-                print("Exception in TelloDrone.__init__\
-                (self, host, port), " + e)
-                raise e
+    instance = None
+    def __init__(self):
+        if TelloDrone.instance == None:
+            self.drone = Tello()
+            self.myConnect()
+            self.width = 360
+            self.height = 240
+            TelloDrone.instance = self
         else:
-            raise Exception("Exception in TelloDrone.__init__\
-                (self, host, port), An instance of the TelloDrone\
-                singleton class already exists.")
+            raise Exception("Error only one instance of TelloDrone is allowed")
+
+    def reset_speed(self):
+        self.drone.for_back_velocity = 0
+        self.drone.left_right_velocity = 0
+        self.drone.up_down_velocity = 0
+        self.drone.yaw_velocity = 0
+        self.drone.speed = 0
+    
+    def stream_reset(self):
+        self.drone.streamoff()
+        self.drone.streamon()
+
+    def myConnect(self):
+        self.drone.connect()
+        self.reset_speed()
+        print(self.drone.get_battery())
+        self.stream_reset()
+
+    def change_video_settings(self, width, height):
+        self.width = width
+        self.height = height
+
+    def move_drone(self, controller):
+        self.drone.send_rc_control(controller.left_right * controller.speed,
+                                   controller.forward_backward * controller.speed,
+                                   controller.up_down * controller.speed,
+                                   controller.yaw * controller.speed)
+
+    def turn_off(self):
+        try:
+            self.drone.land()
+            self.drone.streamoff()
+        except:
+            print("drone is already landing")
+
+        
+
+    def get_frame(self):
+        drone_frame = self.drone.get_frame_read()
+        drone_frame = drone_frame.frame
+        img = cv2.resize(drone_frame, (self.width, self.height))
+        return img
+
+    def frame2surface(self, surface, arr):
+        tmp = surface.get_buffer()
+        tmp.write(arr.tostring(), 0)
