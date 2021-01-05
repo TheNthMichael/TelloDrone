@@ -48,7 +48,6 @@ def start_drone():
         if drone_frame is not None:
             img = cv2.resize(drone_frame, (width, height))
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            if state == 
             cv2.imshow('frame', frame)
     drone.turn_off()
 
