@@ -6,13 +6,13 @@ from Controller import Controller
 from DroneState import States, StateMachine
 from Face import Face
 
-def detecting_faces(frame, classifier):
+def detecting_face(frame, classifier):
         I = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = classifier.detectMultiScale(I, 1.3, 5)
         # return the first face that occures else return failure
         for (x, y, w, h) in faces:
-            return (True, x, y, w, h)
-        return (False, None, None, None, None)
+            return (True, Face(x, y, w, h))
+        return (False, None)
 
 
 def start_drone():
@@ -42,55 +42,75 @@ def start_drone():
 
     drone_active = True
     face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
+    myFace = None
+    last_I = None
 
     while state_machine.state != States.EXIT:
-        # check for pygame events
-        for event in pygame.event.get():
-            drone.reset_speed()
-            if event.type == pygame.QUIT:
-                state_machine.state_change(3)
-                drone.turn_off()
-                break
-
-            if event.type == pygame.KEYDOWN:
-                # emergency landing
-                if event.key == pygame.K_ESCAPE:
-                    print('turning off')
+        try:
+            # check for pygame events
+            for event in pygame.event.get():
+                drone.reset_speed()
+                if event.type == pygame.QUIT:
                     state_machine.state_change(3)
                     drone.turn_off()
                     break
-                elif event.key == pygame.K_ENTER:
-                    drone.drone.takeoff()
-                    state_machine.state_change(0)
-                else:
-                    controller.key_down(event.key)
 
-            elif event.type == pygame.KEYUP:
-                controller.key_up(event.key)
-    
-        # deal with states
-        if (state_machine.state == States.Waiting):
-            print('waiting for connection')
-    
-        elif (state_machine.state == States.USER_CONTROL):
-            drone.move_drone(controller)
-            drone_frame = drone.get_frame()
-            if drone_frame is not None:
-                img = cv2.resize(drone_frame, (width, height))
-                cv2.imshow('frame', img)
+                if event.type == pygame.KEYDOWN:
+                    # emergency landing
+                    if event.key == pygame.K_ESCAPE:
+                        print('turning off')
+                        state_machine.state_change(3)
+                        drone.turn_off()
+                        break
+                    elif event.key == pygame.K_ENTER:
+                        drone.drone.takeoff()
+                        state_machine.state_change(0)
+                    else:
+                        controller.key_down(event.key)
+
+                elif event.type == pygame.KEYUP:
+                    controller.key_up(event.key)
         
-        elif (state_machine.state == States.SEARCHING):
-            try:
+            # deal with states
+            if (state_machine.state == States.Waiting):
+                print('waiting for takeoff')
+        
+            elif (state_machine.state == States.USER_CONTROL):
+                drone.move_drone(controller)
                 drone_frame = drone.get_frame()
                 if drone_frame is not None:
                     img = cv2.resize(drone_frame, (width, height))
-                    ret, x, y, w, h = detecting_faces(img, face_cascade)
-                    if ret:
-
-                    #cv2.imshow('frame', img)
-            except:
-                print('-- AUTO MODE FAILED --')
-                state_machine.state_change(3)
+                    cv2.imshow('Camera', img)
+            
+            elif (state_machine.state == States.SEARCHING):
+                try:
+                    drone_frame = drone.get_frame()
+                    if drone_frame is not None:
+                        img = cv2.resize(drone_frame, (width, height))
+                        ret, myFace = detecting_face(img, face_cascade)
+                        if ret:
+                            ret, last_I = myFace.prepare_tracker(img, features)
+                            if ret:
+                                state_machine.state_change(0)
+                        cv2.imshow('Camera', img)
+                except:
+                    print('-- SEARCHING FAILED --')
+                    state_machine.state_change(3)
+            elif (state_machine.state == States.TRACKING):
+                try:
+                    drone_frame = drone.get_frame()
+                    if drone_frame is not None:
+                        img = cv2.resize(drone_frame, (width, height))
+                        last_I = myFace.tracking_face(last_I, img, lk)
+                        img = cv2.circle(img, ( int(myFace.x + myFace.w / 2), int(myFace.y + myFace.h / 2)), myFace.colors[0].tolist(), -1)
+                        if not ret:
+                            state_machine.state_change(0)
+                        cv2.imshow('Camera', img)
+                except:
+                    print('-- SEARCHING FAILED --')
+                    state_machine.state_change(3)
+        except:
+            print('Drone Failed ')
     drone.turn_off()
 
 
