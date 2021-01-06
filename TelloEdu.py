@@ -84,6 +84,7 @@ def start_drone():
             
             elif (state_machine.state == States.SEARCHING):
                 try:
+                    drone.move_drone(controller)
                     drone_frame = drone.get_frame()
                     if drone_frame is not None:
                         img = cv2.resize(drone_frame, (width, height))
@@ -98,6 +99,7 @@ def start_drone():
                     state_machine.state_change(3)
             elif (state_machine.state == States.TRACKING):
                 try:
+                    drone.move_drone(controller)
                     drone_frame = drone.get_frame()
                     if drone_frame is not None:
                         img = cv2.resize(drone_frame, (width, height))
