@@ -1,11 +1,15 @@
 import sys, pygame
 import cv2
 import numpy
+import math
 from TelloDrone import TelloDrone
 from Controller import Controller
 from DroneState import States, StateMachine
 from Face import Face
 
+"""
+Creates a face object to be tracked
+"""
 def detecting_face(frame, classifier):
         I = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = classifier.detectMultiScale(I, 1.3, 5)
@@ -15,6 +19,8 @@ def detecting_face(frame, classifier):
             return (True, Face( int(x + w//scaling), int(y + h//scaling), int(w - w//scaling), (h-h//scaling) ))
         return (False, None)
 
+def myExp(x):
+    return -1 * math.exp(-x/60) + 1
 
 def start_drone():
     drone = TelloDrone()
@@ -117,10 +123,10 @@ def start_drone():
                         img = cv2.circle(img, ( cmx, cmy), 15, myFace.colors[0].tolist(), -1)
                         img = cv2.rectangle(img, (int(myFace.x),int(myFace.y) ), (int(myFace.x + myFace.w), int(myFace.y + myFace.h) ), (255,100,100), 2)
                         diff = cmx - (width // 2)
-                        if diff < -50:
-                            controller.yaw = -1
-                        elif cmx - (width // 2) > 50:
-                            controller.yaw = 1
+                        if diff < 30:
+                            controller.yaw = -1 * myExp(abs(diff))
+                        elif cmx - (width // 2) > 30:
+                            controller.yaw = myExp(abs(diff))
                         else:
                             controller.yaw = 0
                         if not ret:
