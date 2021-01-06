@@ -1,7 +1,7 @@
 import sys, pygame
 import cv2
 import numpy
-import TelloDrone
+from TelloDrone import TelloDrone
 from Controller import Controller
 from DroneState import States, StateMachine
 from Face import Face
@@ -46,12 +46,11 @@ def start_drone():
     last_I = None
 
     while state_machine.state != States.EXIT:
-        try:
             # check for pygame events
             for event in pygame.event.get():
                 drone.reset_speed()
                 if event.type == pygame.QUIT:
-                    state_machine.state_change(3)
+                    state_machine.state_change(2)
                     drone.turn_off()
                     break
 
@@ -59,12 +58,16 @@ def start_drone():
                     # emergency landing
                     if event.key == pygame.K_ESCAPE:
                         print('turning off')
-                        state_machine.state_change(3)
+                        state_machine.state_change(2)
                         drone.turn_off()
                         break
-                    elif event.key == pygame.K_ENTER:
-                        drone.drone.takeoff()
+                    elif event.key == pygame.K_l and state_machine.state == States.WAITING:
                         state_machine.state_change(0)
+                        drone.drone.takeoff()
+                    elif event.key == pygame.K_p and state_machine.state == States.USER_CONTROL:
+                        state_machine.state_change(0)
+                    elif event.key == pygame.K_p and state_machine.auto == True:
+                        state_machine.state_change(1)
                     else:
                         controller.key_down(event.key)
 
@@ -72,8 +75,12 @@ def start_drone():
                     controller.key_up(event.key)
         
             # deal with states
-            if (state_machine.state == States.Waiting):
+            if (state_machine.state == States.WAITING):
                 print('waiting for takeoff')
+                drone_frame = drone.get_frame()
+                if drone_frame is not None:
+                    img = cv2.resize(drone_frame, (width, height))
+                    cv2.imshow('Camera', img)
         
             elif (state_machine.state == States.USER_CONTROL):
                 drone.move_drone(controller)
@@ -96,24 +103,25 @@ def start_drone():
                         cv2.imshow('Camera', img)
                 except:
                     print('-- SEARCHING FAILED --')
-                    state_machine.state_change(3)
+                    state_machine.state_change(2)
+                    raise
             elif (state_machine.state == States.TRACKING):
                 try:
                     drone.move_drone(controller)
                     drone_frame = drone.get_frame()
                     if drone_frame is not None:
                         img = cv2.resize(drone_frame, (width, height))
-                        last_I = myFace.tracking_face(last_I, img, lk)
-                        img = cv2.circle(img, ( int(myFace.x + myFace.w / 2), int(myFace.y + myFace.h / 2)), myFace.colors[0].tolist(), -1)
+                        ret, last_I = myFace.tracking_face(last_I, img, lk)
+                        img = cv2.circle(img, ( int(myFace.x + myFace.w / 2), int(myFace.y + myFace.h / 2)), 15, myFace.colors[0].tolist(), -1)
                         if not ret:
                             state_machine.state_change(0)
                         cv2.imshow('Camera', img)
                 except:
-                    print('-- SEARCHING FAILED --')
-                    state_machine.state_change(3)
-        except:
-            print('Drone Failed ')
+                    print('-- TRACKING FAILED --')
+                    state_machine.state_change(2)
+                    raise
     drone.turn_off()
+    cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":

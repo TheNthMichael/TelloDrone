@@ -1,3 +1,4 @@
+import pygame
 """
 Controller Class
 for the Tello Edu drone:
@@ -9,9 +10,9 @@ for the Tello Edu drone:
 class Controller:
     _instance = None
     def __init__(self):
-        if not (Controller._instance is None):
+        if Controller._instance is None:
             self.mov_vector = [0,0,0,0]
-            self.speed = 60
+            self.spd = 60
             self.switch = {
                     pygame.K_w : (0, 1),
                     pygame.K_s : (0, -1),
@@ -101,13 +102,13 @@ class Controller:
 
     @property
     def speed(self):
-        return self.speed
+        return self.spd
     
     @speed.setter
     def speed(self, value):
         if value > 100 or value < 0:
             raise Exception("Error speed must be a value\
                             between 0 and 100")
-        self.speed = value
+        self.spd = value
     
     

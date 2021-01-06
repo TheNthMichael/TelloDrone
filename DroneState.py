@@ -9,6 +9,7 @@ class StateMachine:
     def __init__(self):
         # drone should initially be waiting
         self.state = States.WAITING
+        self.auto = False
         self.state_machine = {
             States.WAITING : [
                 States.USER_CONTROL,
@@ -35,5 +36,9 @@ class StateMachine:
     
     def state_change(self, input):
         state_changes = self.state_machine[self.state]
-        state = state_changes[input]
+        self.state = state_changes[input]
+        if self.state == States.SEARCHING or self.state == States.TRACKING:
+            self.auto = True
+        else:
+            self.auto = False
     
