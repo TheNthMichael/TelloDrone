@@ -6,6 +6,9 @@ from Controller import Controller
 from DroneState import States, StateMachine
 from Face import Face
 
+"""
+Creates a face object to be tracked
+"""
 def detecting_face(frame, classifier):
         I = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = classifier.detectMultiScale(I, 1.3, 5)
