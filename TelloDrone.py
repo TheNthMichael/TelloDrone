@@ -6,7 +6,7 @@
 from djitellopy import Tello
 import cv2
 import numpy
-import Controller
+from Controller import Controller
 
 class TelloDrone:
     instance = None
