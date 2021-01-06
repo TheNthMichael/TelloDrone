@@ -10,8 +10,9 @@ def detecting_face(frame, classifier):
         I = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = classifier.detectMultiScale(I, 1.3, 5)
         # return the first face that occures else return failure
+        scaling = 8
         for (x, y, w, h) in faces:
-            return (True, Face(x, y, w, h))
+            return (True, Face( int(x + w//scaling), int(y + h//scaling), int(w - w//scaling), (h-h//scaling) ))
         return (False, None)
 
 
@@ -107,14 +108,24 @@ def start_drone():
                     raise
             elif (state_machine.state == States.TRACKING):
                 try:
-                    drone.move_drone(controller)
                     drone_frame = drone.get_frame()
                     if drone_frame is not None:
                         img = cv2.resize(drone_frame, (width, height))
                         ret, last_I = myFace.tracking_face(last_I, img, lk)
-                        img = cv2.circle(img, ( int(myFace.x + myFace.w / 2), int(myFace.y + myFace.h / 2)), 15, myFace.colors[0].tolist(), -1)
+                        cmx = int(myFace.x + myFace.w / 2)
+                        cmy = int(myFace.y + myFace.h / 2)
+                        img = cv2.circle(img, ( cmx, cmy), 15, myFace.colors[0].tolist(), -1)
+                        img = cv2.rectangle(img, (int(myFace.x),int(myFace.y) ), (int(myFace.x + myFace.w), int(myFace.y + myFace.h) ), (255,100,100), 2)
+                        diff = cmx - (width // 2)
+                        if diff < -50:
+                            controller.yaw = -1
+                        elif cmx - (width // 2) > 50:
+                            controller.yaw = 1
+                        else:
+                            controller.yaw = 0
                         if not ret:
                             state_machine.state_change(0)
+                        drone.move_drone(controller)
                         cv2.imshow('Camera', img)
                 except:
                     print('-- TRACKING FAILED --')
